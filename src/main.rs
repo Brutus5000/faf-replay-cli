@@ -67,7 +67,7 @@ fn get_executable_path<'a>(args: &'a ArgMatches) -> &'a Path {
     let executable_path = Path::new(executable_str);
 
     if !executable_path.exists() {
-        println!("No executable found at {}", executable_str);
+        eprintln!("No executable found at {}", executable_str);
         exit(1)
     }
 
@@ -79,7 +79,7 @@ fn get_replay_path<'a>(args: &'a ArgMatches) -> &'a Path {
     let replay_path = Path::new(replay_str);
 
     if !replay_path.exists() {
-        println!("No replay file found at {}", replay_str);
+        eprintln!("No replay file found at {}", replay_str);
         exit(1)
     }
 
@@ -91,7 +91,7 @@ fn get_wrapper_path<'a>(args: &'a ArgMatches) -> Option<&'a Path> {
         let wrapper_path = Path::new(wrapper_str);
 
         if !wrapper_path.exists() {
-            println!("No wrapper file found at {}", wrapper_str);
+            eprintln!("No wrapper file found at {}", wrapper_str);
             exit(1)
         }
 

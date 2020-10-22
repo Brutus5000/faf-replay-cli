@@ -68,7 +68,7 @@ fn get_executable_path<'a>(args: &'a ArgMatches) -> &'a Path {
         exit(1)
     }
 
-    return executable_path;
+    executable_path
 }
 
 fn get_replay_path<'a>(args: &'a ArgMatches) -> &'a Path {
@@ -80,11 +80,11 @@ fn get_replay_path<'a>(args: &'a ArgMatches) -> &'a Path {
         exit(1)
     }
 
-    return replay_path;
+    replay_path
 }
 
 fn get_wrapper_path<'a>(args: &'a ArgMatches) -> Option<&'a Path> {
-    return args.value_of("wrapper")
+    args.value_of("wrapper")
         .map(|wrapper_str| {
             let wrapper_path = Path::new(wrapper_str);
 
@@ -93,8 +93,8 @@ fn get_wrapper_path<'a>(args: &'a ArgMatches) -> Option<&'a Path> {
                 exit(1)
             }
 
-            return wrapper_path;
-        });
+            wrapper_path
+        })
 }
 
 
@@ -116,24 +116,24 @@ fn main() {
 }
 
 fn get_replay_type(file_name: &str) -> ReplayType {
-    return match file_name {
+    match file_name {
         _ if file_name.ends_with(".scfareplay") => ReplayType::ForgedAlliance,
         _ if file_name.ends_with(".fafreplay") => ReplayType::FafLegacy,
         _ => ReplayType::Unknown,
-    };
+    }
 }
 
 fn prepare_replay_file(replay_path: &Path) -> io::Result<ReplayLocation> {
     let file_name = replay_path.to_str().unwrap();
 
-    return match get_replay_type(file_name) {
+    match get_replay_type(file_name) {
         ReplayType::Unknown =>
             Err(io::Error::new(io::ErrorKind::InvalidData, "Unknown replay format!")),
         ReplayType::ForgedAlliance => Ok(ReplayLocation::AtPath(replay_path)),
         ReplayType::FafLegacy => {
-            extract_faf_legacy_replay(file_name).map(|f| ReplayLocation::AtTempFile(f))
+            extract_faf_legacy_replay(file_name).map(ReplayLocation::AtTempFile)
         }
-    };
+    }
 }
 
 fn extract_faf_legacy_replay(file_name: &str) -> io::Result<NamedTempFile> {
@@ -155,7 +155,7 @@ fn extract_faf_legacy_replay(file_name: &str) -> io::Result<NamedTempFile> {
 
     let tempfile = convert_legacy_replay_stream_to_raw(&base64_replay_stream)?;
 
-    return Ok(tempfile);
+    Ok(tempfile)
 }
 
 fn convert_legacy_replay_stream_to_raw(base64_stream: &str) -> io::Result<NamedTempFile> {
@@ -175,7 +175,7 @@ fn convert_legacy_replay_stream_to_raw(base64_stream: &str) -> io::Result<NamedT
     decoder.read_to_end(&mut output)?;
     temp_replay_file.as_file_mut().write_all(&output)?;
 
-    return Ok(temp_replay_file);
+    Ok(temp_replay_file)
 }
 
 fn launch_game(executable: &Path, file_name: &str, replay_id: u32, wrapper: Option<&Path>) {

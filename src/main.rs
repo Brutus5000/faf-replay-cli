@@ -59,33 +59,60 @@ fn build_cli() -> ArgMatches<'static> {
         .get_matches()
 }
 
-fn get_executable<'a>(args: &'a ArgMatches) -> &'a Path {
+fn get_executable_path<'a>(args: &'a ArgMatches) -> &'a Path {
     let executable_str = args.value_of("executable").unwrap();
-    let executable= Path::new(executable_str);
+    let executable_path = Path::new(executable_str);
 
-    if !executable.exists() {
+    if !executable_path.exists() {
         println!("No executable found at {}", executable_str);
         exit(1)
     }
 
-    return executable;
+    return executable_path;
 }
+
+fn get_replay_path<'a>(args: &'a ArgMatches) -> &'a Path {
+    let replay_str = args.value_of("local-file").unwrap();
+    let replay_path = Path::new(replay_str);
+
+    if !replay_path.exists() {
+        println!("No replay file found at {}", replay_str);
+        exit(1)
+    }
+
+    return replay_path;
+}
+
+fn get_wrapper_path<'a>(args: &'a ArgMatches) -> Option<&'a Path> {
+    return args.value_of("wrapper")
+        .map(|wrapper_str| {
+            let wrapper_path = Path::new(wrapper_str);
+
+            if !wrapper_path.exists() {
+                println!("No wrapper file found at {}", wrapper_str);
+                exit(1)
+            }
+
+            return wrapper_path;
+        });
+}
+
 
 fn main() {
     let matches = build_cli();
 
-    let executable= get_executable(&matches);
-    let file_name = matches.value_of("local-file").unwrap();
-    let wrapper = matches.value_of("wrapper");
+    let executable= get_executable_path(&matches);
+    let replay_path = get_replay_path(&matches);
+    let wrapper = get_wrapper_path(&matches);
 
-    let replay_preparation_result = prepare_replay_file(file_name).expect("Replay file issues!");
+    let replay_preparation_result = prepare_replay_file(replay_path).expect("Replay file issues!");
 
-    let replay_path = match &replay_preparation_result {
+    let raw_replay_path = match &replay_preparation_result {
         ReplayLocation::AtPath(path) => path,
         ReplayLocation::AtTempFile(f) => f.path(),
     }.to_str().unwrap();
 
-    launch_game(executable, &replay_path, 12345, wrapper);
+    launch_game(executable, &raw_replay_path, 12345, wrapper);
 }
 
 fn get_replay_type(file_name: &str) -> ReplayType {
@@ -96,13 +123,13 @@ fn get_replay_type(file_name: &str) -> ReplayType {
     };
 }
 
-fn prepare_replay_file(file_name: &str) -> io::Result<ReplayLocation> {
+fn prepare_replay_file(replay_path: &Path) -> io::Result<ReplayLocation> {
+    let file_name = replay_path.to_str().unwrap();
+
     return match get_replay_type(file_name) {
         ReplayType::Unknown =>
             Err(io::Error::new(io::ErrorKind::InvalidData, "Unknown replay format!")),
-        _ if (!Path::new(file_name).exists()) =>
-            Err(io::Error::new(io::ErrorKind::NotFound, "Replay file not found")),
-        ReplayType::ForgedAlliance => Ok(ReplayLocation::AtPath(Path::new(file_name))),
+        ReplayType::ForgedAlliance => Ok(ReplayLocation::AtPath(replay_path)),
         ReplayType::FafLegacy => {
             extract_faf_legacy_replay(file_name).map(|f| ReplayLocation::AtTempFile(f))
         }
@@ -151,11 +178,13 @@ fn convert_legacy_replay_stream_to_raw(base64_stream: &str) -> io::Result<NamedT
     return Ok(temp_replay_file);
 }
 
-fn launch_game(executable: &Path, file_name: &str, replay_id: u32, wrapper: Option<&str>) {
+fn launch_game(executable: &Path, file_name: &str, replay_id: u32, wrapper: Option<&Path>) {
     let executable_str = executable.to_str().unwrap();
     let executable_dir_str = executable.parent().unwrap().to_str().unwrap();
 
-    let launch_arg = wrapper.unwrap_or_else(|| executable_str);
+    let launch_arg = wrapper
+        .map(|w| w.to_str().unwrap())
+        .unwrap_or_else(|| executable_str);
 
     let mut launch_command = Command::new(launch_arg);
 

@@ -7,7 +7,7 @@ use std::fs::File;
 use std::io;
 use std::io::{BufRead, ErrorKind, Read, Write};
 use std::path::Path;
-use std::process::{Command, exit};
+use std::process::{exit, Command};
 
 use clap::{App, Arg, ArgMatches};
 use flate2::read::ZlibDecoder;
@@ -32,29 +32,32 @@ fn build_cli() -> ArgMatches<'static> {
         .about("A replay launcher for FAForever")
         .version("0.1")
         .author("Brutus5000 <Brutus5000@gmx.net>")
-        .arg(Arg::with_name("executable")
-            .long("executable")
-            .short("e")
-            .value_name("PATH TO ForgedAlliance.exe")
-            .help("Path to the ForgedAlliance.exe")
-            .takes_value(true)
-            .required(true)
+        .arg(
+            Arg::with_name("executable")
+                .long("executable")
+                .short("e")
+                .value_name("PATH TO ForgedAlliance.exe")
+                .help("Path to the ForgedAlliance.exe")
+                .takes_value(true)
+                .required(true),
         )
-        .arg(Arg::with_name("local-file")
-            .long("local-file")
-            .short("f")
-            .value_name("FILE")
-            .help("Path to the replay file you want to watch")
-            .takes_value(true)
-            .required(true)
+        .arg(
+            Arg::with_name("local-file")
+                .long("local-file")
+                .short("f")
+                .value_name("FILE")
+                .help("Path to the replay file you want to watch")
+                .takes_value(true)
+                .required(true),
         )
-        .arg(Arg::with_name("wrapper")
-            .long("wrapper")
-            .short("w")
-            .value_name("WRAPPER")
-            .help("Path to the wrapper script (usually for Linux)")
-            .takes_value(true)
-            .required(false)
+        .arg(
+            Arg::with_name("wrapper")
+                .long("wrapper")
+                .short("w")
+                .value_name("WRAPPER")
+                .help("Path to the wrapper script (usually for Linux)")
+                .takes_value(true)
+                .required(false),
         )
         .get_matches()
 }
@@ -84,24 +87,22 @@ fn get_replay_path<'a>(args: &'a ArgMatches) -> &'a Path {
 }
 
 fn get_wrapper_path<'a>(args: &'a ArgMatches) -> Option<&'a Path> {
-    args.value_of("wrapper")
-        .map(|wrapper_str| {
-            let wrapper_path = Path::new(wrapper_str);
+    args.value_of("wrapper").map(|wrapper_str| {
+        let wrapper_path = Path::new(wrapper_str);
 
-            if !wrapper_path.exists() {
-                println!("No wrapper file found at {}", wrapper_str);
-                exit(1)
-            }
+        if !wrapper_path.exists() {
+            println!("No wrapper file found at {}", wrapper_str);
+            exit(1)
+        }
 
-            wrapper_path
-        })
+        wrapper_path
+    })
 }
-
 
 fn main() {
     let matches = build_cli();
 
-    let executable= get_executable_path(&matches);
+    let executable = get_executable_path(&matches);
     let replay_path = get_replay_path(&matches);
     let wrapper = get_wrapper_path(&matches);
 
@@ -110,7 +111,9 @@ fn main() {
     let raw_replay_path = match &replay_preparation_result {
         ReplayLocation::AtPath(path) => path,
         ReplayLocation::AtTempFile(f) => f.path(),
-    }.to_str().unwrap();
+    }
+        .to_str()
+        .unwrap();
 
     launch_game(executable, &raw_replay_path, 12345, wrapper);
 }
@@ -127,8 +130,10 @@ fn prepare_replay_file(replay_path: &Path) -> io::Result<ReplayLocation> {
     let file_name = replay_path.to_str().unwrap();
 
     match get_replay_type(file_name) {
-        ReplayType::Unknown =>
-            Err(io::Error::new(io::ErrorKind::InvalidData, "Unknown replay format!")),
+        ReplayType::Unknown => Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            "Unknown replay format!",
+        )),
         ReplayType::ForgedAlliance => Ok(ReplayLocation::AtPath(replay_path)),
         ReplayType::FafLegacy => {
             extract_faf_legacy_replay(file_name).map(ReplayLocation::AtTempFile)
@@ -141,17 +146,19 @@ fn extract_faf_legacy_replay(file_name: &str) -> io::Result<NamedTempFile> {
 
     let mut lines = io::BufReader::new(file).lines();
 
-    let _json_metadata = lines.next()
-        .unwrap_or_else(|| Err(io::Error::new(
+    let _json_metadata = lines.next().unwrap_or_else(|| {
+        Err(io::Error::new(
             io::ErrorKind::InvalidData,
             "Replay corrupt - replay metadata json is missing",
-        )))?;
+        ))
+    })?;
 
-    let base64_replay_stream = lines.next()
-        .unwrap_or_else(|| Err(io::Error::new(
+    let base64_replay_stream = lines.next().unwrap_or_else(|| {
+        Err(io::Error::new(
             io::ErrorKind::InvalidData,
             "Replay corrupt - binary replay stream is missing",
-        )))?;
+        ))
+    })?;
 
     let tempfile = convert_legacy_replay_stream_to_raw(&base64_replay_stream)?;
 
@@ -159,11 +166,12 @@ fn extract_faf_legacy_replay(file_name: &str) -> io::Result<NamedTempFile> {
 }
 
 fn convert_legacy_replay_stream_to_raw(base64_stream: &str) -> io::Result<NamedTempFile> {
-    let zipped_qt_data = base64::decode_config(base64_stream, base64::STANDARD)
-        .map_err(|_| io::Error::new(
+    let zipped_qt_data = base64::decode_config(base64_stream, base64::STANDARD).map_err(|_| {
+        io::Error::new(
             ErrorKind::InvalidData,
             "Replay corrupt - couldn't decode base64",
-        ))?;
+        )
+    })?;
 
     let (_, zipped_data_slice) = zipped_qt_data.split_at(4);
     let zipped_data = Vec::from(zipped_data_slice);
@@ -194,18 +202,19 @@ fn launch_game(executable: &Path, file_name: &str, replay_id: u32, wrapper: Opti
 
     launch_command
         .args(&[
-            "/init", "init.lua",
+            "/init",
+            "init.lua",
             "/nobugreport",
-            "/replay", file_name,
-            "/replayid", &replay_id.to_string()
+            "/replay",
+            file_name,
+            "/replayid",
+            &replay_id.to_string(),
         ])
         .current_dir(executable_dir_str);
 
     // game_directory.map(|dir| launch_command.current_dir(Path::new(dir)));
 
-    let result = launch_command
-        .output()
-        .expect("Game failed to launch");
+    let result = launch_command.output().expect("Game failed to launch");
 
     io::stdout().write_all(&result.stdout).unwrap();
     io::stderr().write_all(&result.stderr).unwrap();
